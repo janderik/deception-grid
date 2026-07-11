@@ -1,0 +1,75 @@
+# Deception Grid Configuration
+# Copy this file to config.yaml and modify as needed
+
+engine:
+  log_level: INFO
+  max_connections: 1000
+
+honeypots:
+  ssh:
+    enabled: true
+    port: 2222
+    banner: "SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.1"
+    
+  http:
+    enabled: true
+    port: 8080
+    server_header: "nginx/1.18.0"
+    fake_pages:
+      admin: /admin
+      login: /login
+      api: /api
+      wordpress: /wp-admin
+      phpmyadmin: /phpmyadmin
+      env_file: /.env
+    
+  database:
+    enabled: true
+    port: 3306
+    type: mysql
+    fake_databases:
+      - users
+      - credentials
+      - production
+    
+  smb:
+    enabled: true
+    port: 445
+    share_name: "Public"
+
+capture:
+  enabled: true
+  mitre_mapping: true
+  
+alerts:
+  email:
+    enabled: false
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    username: "your-email@gmail.com"
+    password: "your-app-password"
+    from_address: "your-email@gmail.com"
+    recipients:
+      - "security@example.com"
+  
+  webhook:
+    enabled: false
+    url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+    format: slack
+    headers:
+      Content-Type: "application/json"
+  
+  syslog:
+    enabled: true
+    server: "localhost"
+    port: 514
+    facility: 16
+    protocol: udp
+
+dashboard:
+  enabled: true
+  port: 5000
+  auth:
+    enabled: true
+    username: "admin"
+    password: "changeme"

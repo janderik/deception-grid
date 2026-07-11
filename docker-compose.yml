@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  deception-grid:
+    build: .
+    container_name: deception-grid
+    ports:
+      - "2222:2222"   # SSH Honeypot
+      - "8080:8080"   # HTTP Honeypot
+      - "3306:3306"   # Database Honeypot
+      - "445:445"     # SMB Honeypot
+      - "5000:5000"   # Dashboard
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - logs:/app/logs
+    environment:
+      - LOG_LEVEL=INFO
+      - TZ=UTC
+    restart: unless-stopped
+    networks:
+      - honeypot-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  # Optional: ELK Stack for log aggregation
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - honeypot-net
+    profiles:
+      - elk
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - honeypot-net
+    profiles:
+      - elk
+
+volumes:
+  logs:
+  esdata:
+
+networks:
+  honeypot-net:
+    driver: bridge

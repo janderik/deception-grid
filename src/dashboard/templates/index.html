@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deception Grid Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; }
+        .header { background: #16213e; padding: 20px; border-bottom: 1px solid #0f3460; }
+        .header h1 { color: #e94560; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: #16213e; border-radius: 8px; padding: 20px; border: 1px solid #0f3460; }
+        .card h2 { color: #e94560; margin-bottom: 15px; font-size: 1.2em; }
+        .stat { font-size: 2em; font-weight: bold; color: #0f3460; }
+        .stat-label { color: #888; font-size: 0.9em; }
+        .events { max-height: 400px; overflow-y: auto; }
+        .event { padding: 10px; border-bottom: 1px solid #0f3460; }
+        .event:last-child { border-bottom: none; }
+        .severity-critical { color: #dc3545; }
+        .severity-high { color: #fd7e14; }
+        .severity-medium { color: #ffc107; }
+        .severity-low { color: #28a745; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #0f3460; }
+        th { background: #0f3460; }
+        .status-running { color: #28a745; }
+        .status-stopped { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Deception Grid Dashboard</h1>
+    </div>
+    <div class="container">
+        <div class="grid">
+            <div class="card">
+                <h2>System Status</h2>
+                <div class="stat" id="status">Loading...</div>
+                <div class="stat-label">Engine Status</div>
+            </div>
+            <div class="card">
+                <h2>Total Events</h2>
+                <div class="stat" id="total-events">0</div>
+                <div class="stat-label">Captured Events</div>
+            </div>
+            <div class="card">
+                <h2>Active Connections</h2>
+                <div class="stat" id="active-conn">0</div>
+                <div class="stat-label">Current Connections</div>
+            </div>
+            <div class="card">
+                <h2>Honeypots</h2>
+                <table id="honeypots-table">
+                    <tr><th>Type</th><th>Port</th><th>Status</th></tr>
+                </table>
+            </div>
+            <div class="card">
+                <h2>Recent Events</h2>
+                <div class="events" id="events-list">
+                    <p>Loading events...</p>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Alerts</h2>
+                <div class="events" id="alerts-list">
+                    <p>Loading alerts...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                document.getElementById('status').textContent = data.running ? 'Running' : 'Stopped';
+                document.getElementById('status').className = 'stat ' + (data.running ? 'status-running' : 'status-stopped');
+                document.getElementById('total-events').textContent = data.total_events || 0;
+            } catch (e) { console.error(e); }
+        }
+        async function fetchHoneypots() {
+            try {
+                const res = await fetch('/api/honeypots');
+                const data = await res.json();
+                const table = document.getElementById('honeypots-table');
+                table.innerHTML = '<tr><th>Type</th><th>Port</th><th>Status</th></tr>';
+                for (const [name, stats] of Object.entries(data)) {
+                    const row = table.insertRow();
+                    row.insertCell().textContent = name.toUpperCase();
+                    row.insertCell().textContent = stats.port;
+                    row.insertCell().textContent = stats.running ? 'Active' : 'Inactive';
+                }
+            } catch (e) { console.error(e); }
+        }
+        async function fetchEvents() {
+            try {
+                const res = await fetch('/api/events?limit=10');
+                const data = await res.json();
+                const list = document.getElementById('events-list');
+                list.innerHTML = '';
+                data.reverse().forEach(e => {
+                    const div = document.createElement('div');
+                    div.className = 'event';
+                    div.innerHTML = `<strong>${e.source}</strong> - ${e.event_type}<br><small>${e.timestamp}</small>`;
+                    list.appendChild(div);
+                });
+            } catch (e) { console.error(e); }
+        }
+        async function fetchAlerts() {
+            try {
+                const res = await fetch('/api/alerts');
+                const data = await res.json();
+                const list = document.getElementById('alerts-list');
+                list.innerHTML = '';
+                data.slice(-10).reverse().forEach(a => {
+                    const div = document.createElement('div');
+                    div.className = 'event';
+                    div.innerHTML = `<span class="severity-${a.severity}">[${a.severity.toUpperCase()}]</span> ${a.title}<br><small>${a.timestamp}</small>`;
+                    list.appendChild(div);
+                });
+            } catch (e) { console.error(e); }
+        }
+        function refresh() { fetchStats(); fetchHoneypots(); fetchEvents(); fetchAlerts(); }
+        refresh();
+        setInterval(refresh, 5000);
+    </script>
+</body>
+</html>
